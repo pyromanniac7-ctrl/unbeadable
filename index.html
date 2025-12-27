@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unbeadable Shop</title>
+<style>
+body { font-family: Arial,sans-serif; margin:0; background:#f5f7fb; }
+header { background:#7c3aed; color:white; padding:30px; text-align:center; }
+.container { max-width:1100px; margin:40px auto; padding:20px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; }
+.card { background:white; padding:20px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,.08); }
+.price { color:#7c3aed; font-weight:bold; }
+button { margin-top:10px; width:100%; padding:10px; background:#7c3aed; color:white; border:none; border-radius:8px; cursor:pointer; }
+button:hover { background:#6d28d9; }
+#cart,#admin { background:white; padding:20px; border-radius:12px; margin-top:40px; }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; justify-content:center; align-items:center; }
+.modal-content { background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; }
+.color-picker { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+.color-option { width:30px; height:30px; border-radius:50%; cursor:pointer; border:2px solid #ccc; }
+.color-option.selected { border:3px solid #7c3aed; }
+</style>
+</head>
+<body>
+<header>
+<h1>Unbeadable</h1>
+<p>Handmade Rubber Band Bracelets</p>
+</header>
+
+<div class="container">
+<h2>Shop</h2>
+<div class="grid" id="shopGrid">
+  <!-- Products will be added by JS -->
+</div>
+
+<div id="cart">
+<h2>Cart</h2>
+<div id="items"></div>
+<p><strong>Total:</strong> $<span id="total">0.00</span></p>
+<input id="name" placeholder="Your name">
+<button id="checkout">Place Order</button>
+</div>
+
+<div id="admin">
+<h2>Admin Panel</h2>
+<input id="adminPass" type="password" placeholder="Admin password">
+<button id="adminLogin">Login</button>
+<div id="orders"></div>
+</div>
+</div>
+
+<div id="colorModal" class="modal">
+<div class="modal-content">
+<h3>Select up to 5 colors</h3>
+<div class="color-picker" id="colorPicker">
+<!-- Colors added by JS -->
+</div>
+<button id="confirmColors">Add to Cart</button>
+<button id="closeModal">Cancel</button>
+</div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+const ADMIN_PASSWORD = "unbeadable123";
+let cart = JSON.parse(localStorage.getItem("cart")||"[]");
+let orders = JSON.parse(localStorage.getItem("orders")||"[]");
+let selectedBracelet = "";
+let selectedPrice = 0;
+let selectedColors = [];
+
+// Products
+const products = [
+{name:"Normal Bracelet", price:0.75},
+{name:"Triple Normal", price:0.95},
+{name:"Fishtail", price:0.85},
+{name:"Inverted Fishtail", price:0.95},
+{name:"Starburst", price:1.00},
+{name:"Hive", price:1.50},
+{name:"Dragon Scale", price:1.75},
+{name:"Ladder", price:1.85},
+{name:"Flower Power", price:1.00},
+{name:"Tropico", price:1.00},
+{name:"Rubber Bead", price:0.85},
+{name:"Taffy Twist", price:1.00}
+];
+
+// Colors
+const colors = ["Red","Blue","Green","Yellow","Purple","Orange","Pink","Black","White","Brown","Cyan","Lime"];
+
+const shopGrid = document.getElementById("shopGrid");
+products.forEach(p=>{
+  const card = document.createElement("div");
+  card.className="card";
+  card.innerHTML=`<h3>${p.name}</h3><div class="price">$${p.price.toFixed(2)}</div><button>Add</button>`;
+  card.querySelector("button").addEventListener("click", ()=>openModal(p.name, p.price));
+  shopGrid.appendChild(card);
+});
+
+// Color picker
+const colorPicker = document.getElementById("colorPicker");
+colors.forEach(c=>{
+  const div = document.createElement("div");
+  div.className="color-option";
+  div.dataset.color=c;
+  div.style.background=c.toLowerCase();
+  div.addEventListener("click", ()=>{
+    if(div.classList.contains("selected")){ div.classList.remove("selected"); selectedColors=selectedColors.filter(cl=>cl!==c);}
+    else if(selectedColors.length<5){ div.classList.add("selected"); selectedColors.push(c);}
+  });
+  colorPicker.appendChild(div);
+});
+
+function renderCart(){
+  const items = document.getElementById("items");
+  let total=0;
+  items.innerHTML="";
+  cart.forEach(i=>{
+    items.innerHTML+=`<p><strong>${i.name}</strong> - $${i.price.toFixed(2)}<br>Colors: ${i.colors.join(", ")}</p>`;
+    total+=i.price;
+  });
+  document.getElementById("total").innerText=total.toFixed(2);
+}
+
+function openModal(name, price){
+  selectedBracelet=name; selectedPrice=price; selectedColors=[];
+  document.querySelectorAll(".color-option").forEach(c=>c.classList.remove("selected"));
+  document.getElementById("colorModal").style.display="flex";
+}
+
+function closeModal(){document.getElementById("colorModal").style.display="none";}
+
+document.getElementById("confirmColors").addEventListener("click", ()=>{
+  if(selectedColors.length===0){alert("Pick at least one color"); return;}
+  cart.push({name:selectedBracelet, price:selectedPrice, colors:[...selectedColors]});
+  localStorage.setItem("cart", JSON.stringify(cart));
+  renderCart(); closeModal();
+});
+
+document.getElementById("closeModal").addEventListener("click", closeModal);
+
+document.getElementById("checkout").addEventListener("click", ()=>{
+  const name=document.getElementById("name").value;
+  if(!name || cart.length===0){alert("Missing info"); return;}
+  orders.push({name, time:new Date().toLocaleString(), cart:[...cart]});
+  localStorage.setItem("orders", JSON.stringify(orders));
+  cart=[]; localStorage.setItem("cart", JSON.stringify(cart));
+  renderCart();
+  alert("Order placed!");
+});
+
+document.getElementById("adminLogin").addEventListener("click", ()=>{
+  const pass=document.getElementById("adminPass").value;
+  if(pass!==ADMIN_PASSWORD){alert("Wrong password"); return;}
+  const o=document.getElementById("orders");
+  o.innerHTML="<h3>Orders</h3>";
+  if(orders.length===0){o.innerHTML+="<p>No orders yet.</p>"; return;}
+  orders.forEach(ord=>{
+    let orderTotal=ord.cart.reduce((sum,i)=>sum+i.price,0);
+    o.innerHTML+=`<p><strong>${ord.name}</strong> - $${orderTotal.toFixed(2)}<br>${ord.time}<br>${ord.cart.map(i=>`${i.name} ($${i.price.toFixed(2)}) - Colors: ${i.colors.join(", ")}`).join("<br>")}</p><hr>`;
+  });
+});
+
+renderCart();
+});
+</script>
+</body>
+</html>
+
+
